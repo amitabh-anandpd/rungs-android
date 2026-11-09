@@ -44,20 +44,28 @@ enum class Suggestion { LEVEL_UP, ADD_LOAD }
  * ladder like the backpack row) the suggestion is more books or a slower tempo instead.
  */
 fun suggestion(m: Movement, p: Progress, sessions: List<Session>): Suggestion? {
-    val top = m.levels[p.level].max
     val recent = sessions.asReversed().asSequence()
         .map { s -> s.sets.filter { it.movementId == m.id } }
         .filter { it.isNotEmpty() }
         .take(2).toList()
-    val ready = recent.size == 2 && recent.all { sets ->
-        val main = sets.filter { it.level == p.level && it.books == p.books && it.slowTempo == p.slowTempo }
-        main.size >= 3 && main.all { it.value >= top }
-    }
     return when {
-        !ready -> null
+        recent.size < 2 || !recent.all { allAtTop(it, m, p) } -> null
         p.level < m.levels.lastIndex -> Suggestion.LEVEL_UP
         else -> Suggestion.ADD_LOAD
     }
+}
+
+/** The last session was at the top; one more like it triggers [suggestion]. */
+fun oneSessionAway(m: Movement, p: Progress, sessions: List<Session>): Boolean =
+    suggestion(m, p, sessions) == null && allAtTop(lastSets(m.id, sessions), m, p)
+
+/** Sets that count for progression: same level, books and tempo as now. */
+fun countingSets(sets: List<SetLog>, p: Progress) =
+    sets.filter { it.level == p.level && it.books == p.books && it.slowTempo == p.slowTempo }
+
+private fun allAtTop(sets: List<SetLog>, m: Movement, p: Progress): Boolean {
+    val main = countingSets(sets, p)
+    return main.size >= 3 && main.all { it.value >= m.levels[p.level].max }
 }
 
 sealed interface TestStep {

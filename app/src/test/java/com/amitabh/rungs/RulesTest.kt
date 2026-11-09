@@ -48,7 +48,10 @@ class RulesTest {
         val top = s(Day.PUSH, 3, *sets("pushup", 4, 15, 15, 15))
         val short = s(Day.PUSH, 3, *sets("pushup", 4, 15, 15, 14))
         assertNull(suggestion(pushup, p, listOf(top)))
+        assertTrue(oneSessionAway(pushup, p, listOf(top)))
         assertNull(suggestion(pushup, p, listOf(short, top)))
+        assertFalse(oneSessionAway(pushup, p, listOf(top, short)))
+        assertFalse(oneSessionAway(pushup, p, listOf(top, top))) // already ready, not "one away"
         assertEquals(Suggestion.LEVEL_UP, suggestion(pushup, p, listOf(top, top)))
         // Sessions without the movement in between don't break "in a row".
         assertEquals(Suggestion.LEVEL_UP, suggestion(pushup, p, listOf(top, s(Day.PULL, 2), top)))

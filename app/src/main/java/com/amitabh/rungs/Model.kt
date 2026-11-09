@@ -3,7 +3,11 @@ package com.amitabh.rungs
 import kotlinx.serialization.Serializable
 import java.time.LocalDate
 
-enum class Day { PUSH, PULL, LEGS }
+enum class Day {
+    PUSH, PULL, LEGS;
+
+    val label get() = name.lowercase().replaceFirstChar { it.uppercase() }
+}
 
 enum class Measure { REPS, SECONDS }
 
@@ -81,4 +85,6 @@ data class AppData(
     /** Saved after every logged set so a killed app loses nothing. */
     val inProgress: Session? = null,
     val lastExport: String? = null,
-)
+) {
+    fun progressOf(m: Movement) = progress[m.id] ?: Progress(m.startLevel)
+}
