@@ -36,6 +36,19 @@ fun lastSets(movementId: String, sessions: List<Session>): List<SetLog> =
     sessions.asReversed().firstNotNullOfOrNull { s -> s.sets.filter { it.movementId == movementId }.ifEmpty { null } }
         ?: emptyList()
 
+/** Stepper step: 1 rep, or 5 seconds for holds. */
+fun step(level: Level) = if (level.measure == Measure.SECONDS) 5 else 1
+
+/**
+ * Where the stepper starts for a set: last time's same set plus one step ("add one rep to any set"),
+ * capped at the top of the range (past it, the answer is the next level), or the bottom of the
+ * target with no history or on a comeback session.
+ */
+fun startValue(level: Level, last: List<SetLog>, setIndex: Int, comeback: Boolean): Int {
+    val prev = last.getOrNull(setIndex)?.value
+    return if (prev == null || comeback) target(level, comeback).first else minOf(prev + step(level), level.max)
+}
+
 enum class Suggestion { LEVEL_UP, ADD_LOAD }
 
 /**

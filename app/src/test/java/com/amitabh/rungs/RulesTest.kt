@@ -91,6 +91,17 @@ class RulesTest {
         assertEquals(AppData(), Store.import(good.byteInputStream()))
     }
 
+    @Test fun stepperStartsOneAboveLastTime() {
+        val reps = Level("x", "", 8, 15)
+        val hold = Level("h", "", 20, 45, Measure.SECONDS)
+        val last = sets("pushup", 4, 12, 11).toList()
+        assertEquals(13, startValue(reps, last, 0, comeback = false))
+        assertEquals(8, startValue(reps, last, 2, comeback = false))   // no third set last time
+        assertEquals(6, startValue(reps, last, 0, comeback = true))    // comeback uses lowered target
+        assertEquals(35, startValue(hold, listOf(SetLog("core", 1, 30)), 0, comeback = false))
+        assertEquals(15, startValue(reps, sets("pushup", 4, 15).toList(), 0, comeback = false)) // capped at top
+    }
+
     @Test fun strengthTestPlacement() {
         assertEquals(TestStep.Start(4), testStep(pushup, 4, 12, emptySet()))
         assertEquals(TestStep.TestAgain(5), testStep(pushup, 4, 24, setOf(4)))
