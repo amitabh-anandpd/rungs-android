@@ -4,6 +4,7 @@ import org.junit.Assert.assertEquals
 import org.junit.Assert.assertFalse
 import org.junit.Assert.assertNull
 import org.junit.Assert.assertTrue
+import org.junit.Assert.fail
 import org.junit.Test
 import java.time.LocalDate
 
@@ -61,6 +62,30 @@ class RulesTest {
         val atOne = s(Day.PULL, 1, *sets("bprow", 0, 15, 15, 15, books = 1))
         assertEquals(Suggestion.ADD_LOAD, suggestion(bprow, p, listOf(atTwo, atTwo)))
         assertNull(suggestion(bprow, p, listOf(atOne, atTwo)))
+    }
+
+    @Test fun slowTempoSwitchResetsLevelUpCount() {
+        val normal = s(Day.PULL, 2, *sets("bprow", 0, 15, 15, 15))
+        assertEquals(Suggestion.ADD_LOAD, suggestion(bprow, Progress(0), listOf(normal, normal)))
+        assertNull(suggestion(bprow, Progress(0, slowTempo = true), listOf(normal, normal)))
+    }
+
+    @Test fun lastSetsComesFromMostRecentSessionWithTheMovement() {
+        val older = s(Day.PUSH, 4, *sets("pushup", 4, 10, 10, 9))
+        val newer = s(Day.PUSH, 1, *sets("pushup", 4, 12, 11, 10))
+        assertEquals(listOf(12, 11, 10), lastSets("pushup", listOf(older, newer, s(Day.PULL, 0))).map { it.value })
+        assertTrue(lastSets("dip", listOf(older, newer)).isEmpty())
+    }
+
+    @Test fun badBackupFileIsRejected() {
+        val good = RungsJson.encodeToString(AppData())
+        for (bad in listOf("", "not json", good.take(good.length / 2))) {
+            try {
+                Store.import(bad.byteInputStream())
+                fail("accepted: ${bad.take(20)}")
+            } catch (_: Exception) {}
+        }
+        assertEquals(AppData(), Store.import(good.byteInputStream()))
     }
 
     @Test fun strengthTestPlacement() {
