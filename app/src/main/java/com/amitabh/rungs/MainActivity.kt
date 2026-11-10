@@ -9,7 +9,6 @@ import androidx.activity.compose.rememberLauncherForActivityResult
 import androidx.activity.compose.setContent
 import androidx.activity.result.contract.ActivityResultContracts
 import androidx.activity.enableEdgeToEdge
-import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.padding
 import androidx.compose.material3.MaterialTheme
@@ -21,10 +20,11 @@ import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.runtime.setValue
-import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.lifecycle.viewmodel.compose.viewModel
 import com.amitabh.rungs.ui.HistoryScreen
+import com.amitabh.rungs.ui.LaddersScreen
+import com.amitabh.rungs.ui.ProfileScreen
 import com.amitabh.rungs.ui.SessionScreen
 import com.amitabh.rungs.ui.TodayScreen
 import com.amitabh.rungs.ui.theme.RungsTheme
@@ -77,7 +77,8 @@ class MainActivity : ComponentActivity() {
                             onImport = { importFrom.launch(arrayOf("application/json", "application/octet-stream", "text/plain")) },
                             modifier = mod,
                         )
-                        else -> Box(mod, contentAlignment = Alignment.Center) { Text("${tab.label} is coming soon") }
+                        Tab.LADDERS -> LaddersScreen(vm.data, onEditLevel = vm::editLevel, onSetProgress = vm::setProgress, modifier = mod)
+                        Tab.PROFILE -> ProfileScreen(vm.data, onChange = vm::setProfile, modifier = mod)
                     }
                 }
             }

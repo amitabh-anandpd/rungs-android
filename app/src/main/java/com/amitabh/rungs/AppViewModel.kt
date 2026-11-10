@@ -83,6 +83,13 @@ class AppViewModel(app: Application) : AndroidViewModel(app) {
         d.copy(progress = d.progress + (m.id to next))
     }
 
+    /** Edits one rung of a ladder: name, cue, or target range. */
+    fun editLevel(m: Movement, index: Int, level: Level) = update { d ->
+        d.copy(movements = d.movements.map { if (it.id != m.id) it else it.copy(levels = it.levels.toMutableList().apply { set(index, level) }) })
+    }
+
+    fun setProfile(p: Profile) = update { it.copy(profile = p) }
+
     fun addWeight(kg: Double) = update { d -> d.copy(weights = withWeight(d.weights, Weight(LocalDate.now().toString(), kg))) }
 
     /** Writes a backup to a file the user picked. lastExport only moves once the write succeeded. */

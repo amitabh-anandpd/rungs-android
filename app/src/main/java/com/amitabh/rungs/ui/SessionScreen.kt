@@ -266,7 +266,7 @@ private fun RestCard(restEnd: Long?, now: Long) {
 }
 
 @Composable
-private fun Stepper(value: Int, step: Int, unit: String, onChange: (Int) -> Unit) {
+internal fun Stepper(value: Int, step: Int, unit: String, onChange: (Int) -> Unit) {
     Row(Modifier.fillMaxWidth(), verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.Center) {
         OutlinedButton(onClick = { onChange((value - step).coerceAtLeast(0)) }, Modifier.size(64.dp)) { Text("−", fontSize = 24.sp) }
         Column(Modifier.widthIn(min = 120.dp), horizontalAlignment = Alignment.CenterHorizontally) {

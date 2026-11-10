@@ -73,6 +73,7 @@ data class Weight(val date: String, val kg: Double)
 
 @Serializable
 data class Profile(
+    val goal: String = "Muscle size",
     val equipment: List<String> = listOf("Bed", "Table", "Chair", "Backpack with books"),
     val restSeconds: Int = 75,
 )
