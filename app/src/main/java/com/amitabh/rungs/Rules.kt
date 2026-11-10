@@ -101,3 +101,17 @@ fun testStep(m: Movement, level: Int, value: Int, tested: Set<Int>): TestStep {
     }
     return if (next in tested) TestStep.Start(minOf(level, next)) else TestStep.TestAgain(next)
 }
+
+/** Working sets (no test sets) of [movementId] per session, newest first. */
+fun history(movementId: String, sessions: List<Session>): List<Pair<Session, List<SetLog>>> =
+    sessions.asReversed().mapNotNull { s ->
+        s.sets.filter { it.movementId == movementId && !it.test }.ifEmpty { null }?.let { s to it }
+    }
+
+/** Adds a weigh-in; a second one on the same day replaces the first. Kept oldest first. */
+fun withWeight(weights: List<Weight>, w: Weight): List<Weight> =
+    (weights.filter { it.date != w.date } + w).sortedBy { it.date }
+
+/** Data safety: nudge for a backup when there's training to lose and none in the last 14 days. */
+fun backupDue(lastExport: String?, sessions: List<Session>, today: LocalDate): Boolean =
+    sessions.isNotEmpty() && (lastExport == null || ChronoUnit.DAYS.between(LocalDate.parse(lastExport), today) >= 14)

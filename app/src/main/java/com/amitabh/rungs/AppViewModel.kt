@@ -1,6 +1,8 @@
 package com.amitabh.rungs
 
 import android.app.Application
+import android.net.Uri
+import android.widget.Toast
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.setValue
@@ -8,6 +10,7 @@ import androidx.lifecycle.AndroidViewModel
 import androidx.lifecycle.viewModelScope
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.launch
+import kotlinx.coroutines.withContext
 import java.time.LocalDate
 
 class AppViewModel(app: Application) : AndroidViewModel(app) {
@@ -79,4 +82,27 @@ class AppViewModel(app: Application) : AndroidViewModel(app) {
         }
         d.copy(progress = d.progress + (m.id to next))
     }
+
+    fun addWeight(kg: Double) = update { d -> d.copy(weights = withWeight(d.weights, Weight(LocalDate.now().toString(), kg))) }
+
+    /** Writes a backup to a file the user picked. lastExport only moves once the write succeeded. */
+    fun export(uri: Uri) = viewModelScope.launch {
+        val out = data.copy(lastExport = LocalDate.now().toString())
+        val ok = withContext(io) {
+            runCatching { getApplication<Application>().contentResolver.openOutputStream(uri, "wt")!!.use { Store.export(out, it) } }.isSuccess
+        }
+        if (ok) update { it.copy(lastExport = out.lastExport) }
+        toast(if (ok) "Backup saved" else "Couldn't save the backup")
+    }
+
+    /** Replaces everything with a backup file. A bad file changes nothing. */
+    fun import(uri: Uri) = viewModelScope.launch {
+        val read = withContext(io) {
+            runCatching { getApplication<Application>().contentResolver.openInputStream(uri)!!.use { Store.import(it) } }.getOrNull()
+        }
+        if (read != null) update { read.copy(inProgress = null) }
+        toast(if (read != null) "Backup restored: ${read.sessions.size} sessions" else "That file isn't a Rungs backup")
+    }
+
+    private fun toast(text: String) = Toast.makeText(getApplication(), text, Toast.LENGTH_SHORT).show()
 }

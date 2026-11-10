@@ -122,6 +122,26 @@ class RulesTest {
         assertEquals(null, suggestion(pushup, p, listOf(maxSets, maxSets)))
     }
 
+    @Test fun historyIsNewestFirstWithoutTestSets() {
+        val old = s(Day.PUSH, 3, *sets("pushup", 4, 10, 9))
+        val new = s(Day.PUSH, 1, SetLog("pushup", 4, 20, test = true), *sets("pushup", 4, 12))
+        val h = history("pushup", listOf(old, s(Day.PULL, 2), new))
+        assertEquals(listOf(listOf(12), listOf(10, 9)), h.map { (_, sets) -> sets.map { it.value } })
+    }
+
+    @Test fun sameDayWeightReplacesAndStaysSorted() {
+        val w = withWeight(listOf(Weight("2026-11-01", 60.0), Weight("2026-11-09", 61.0)), Weight("2026-11-05", 60.5))
+        assertEquals(listOf("2026-11-01", "2026-11-05", "2026-11-09"), w.map { it.date })
+        assertEquals(listOf(60.0, 62.0), withWeight(listOf(Weight("2026-11-01", 60.0), Weight("2026-11-09", 61.0)), Weight("2026-11-09", 62.0)).map { it.kg })
+    }
+
+    @Test fun backupNudgeAfterTwoWeeks() {
+        assertFalse(backupDue(null, emptyList(), today))
+        assertTrue(backupDue(null, listOf(s(Day.PUSH, 1)), today))
+        assertFalse(backupDue(today.minusDays(13).toString(), listOf(s(Day.PUSH, 1)), today))
+        assertTrue(backupDue(today.minusDays(14).toString(), listOf(s(Day.PUSH, 1)), today))
+    }
+
     @Test fun dataSurvivesJsonRoundTrip() {
         val d = AppData(sessions = listOf(s(Day.PUSH, 1, *sets("pushup", 4, 12, 11))), lastExport = "2026-11-01")
         assertEquals(d, RungsJson.decodeFromString<AppData>(RungsJson.encodeToString(d)))
