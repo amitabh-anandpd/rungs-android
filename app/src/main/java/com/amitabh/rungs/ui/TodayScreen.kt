@@ -45,6 +45,7 @@ fun TodayScreen(
     data: AppData,
     onAccept: (Movement, Suggestion, slowTempo: Boolean) -> Unit,
     onStart: (() -> Unit)?,
+    onExport: () -> Unit,
     modifier: Modifier = Modifier,
 ) {
     val today = LocalDate.now()
@@ -79,7 +80,7 @@ fun TodayScreen(
 
         if (suggestRest(data.sessions, today)) Note("Six days in a row. Today is a good rest day; the queue will wait.")
         if (comeback) Note("Welcome back. Targets are about 20% lower for this session.")
-        if (backupDue(data.lastExport, data.sessions, today)) Note("Time for a backup. Export one from History.")
+        if (backupDue(data.lastExport, data.sessions, today)) Note("Time for a backup.", "Export backup" to onExport)
 
         data.movements.filter { it.day == day }.forEach { m ->
             MovementCard(data, m, comeback, onAccept)
@@ -96,9 +97,12 @@ fun TodayScreen(
 }
 
 @Composable
-private fun Note(text: String) {
+private fun Note(text: String, action: Pair<String, () -> Unit>? = null) {
     Card(colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.primaryContainer)) {
-        Text(text, Modifier.padding(12.dp), color = MaterialTheme.colorScheme.onPrimaryContainer)
+        Row(Modifier.padding(12.dp).fillMaxWidth(), verticalAlignment = Alignment.CenterVertically) {
+            Text(text, Modifier.weight(1f), color = MaterialTheme.colorScheme.onPrimaryContainer)
+            action?.let { (label, onClick) -> Button(onClick = onClick) { Text(label) } }
+        }
     }
 }
 

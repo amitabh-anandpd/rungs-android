@@ -45,6 +45,7 @@ class MainActivity : ComponentActivity() {
                 // System file pickers, so a backup can go anywhere: Downloads, Drive, a USB stick.
                 val exportTo = rememberLauncherForActivityResult(ActivityResultContracts.CreateDocument("application/json")) { it?.let(vm::export) }
                 val importFrom = rememberLauncherForActivityResult(ActivityResultContracts.OpenDocument()) { it?.let(vm::import) }
+                val export = { exportTo.launch("rungs-backup-${java.time.LocalDate.now()}.json") }
                 val start = {
                     if (Build.VERSION.SDK_INT >= 33 &&
                         checkSelfPermission(Manifest.permission.POST_NOTIFICATIONS) != PackageManager.PERMISSION_GRANTED
@@ -69,11 +70,11 @@ class MainActivity : ComponentActivity() {
                 ) { pad ->
                     val mod = Modifier.fillMaxSize().padding(pad)
                     when (tab) {
-                        Tab.TODAY -> TodayScreen(vm.data, onAccept = vm::accept, onStart = start, modifier = mod)
+                        Tab.TODAY -> TodayScreen(vm.data, onAccept = vm::accept, onStart = start, onExport = export, modifier = mod)
                         Tab.HISTORY -> HistoryScreen(
                             vm.data,
                             onAddWeight = vm::addWeight,
-                            onExport = { exportTo.launch("rungs-backup-${java.time.LocalDate.now()}.json") },
+                            onExport = export,
                             onImport = { importFrom.launch(arrayOf("application/json", "application/octet-stream", "text/plain")) },
                             modifier = mod,
                         )
