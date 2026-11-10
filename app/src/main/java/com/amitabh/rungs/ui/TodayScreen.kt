@@ -26,6 +26,7 @@ import com.amitabh.rungs.Day
 import com.amitabh.rungs.Measure
 import com.amitabh.rungs.Movement
 import com.amitabh.rungs.Suggestion
+import com.amitabh.rungs.backupDue
 import com.amitabh.rungs.countingSets
 import com.amitabh.rungs.isComeback
 import com.amitabh.rungs.lastSets
@@ -78,6 +79,7 @@ fun TodayScreen(
 
         if (suggestRest(data.sessions, today)) Note("Six days in a row. Today is a good rest day; the queue will wait.")
         if (comeback) Note("Welcome back. Targets are about 20% lower for this session.")
+        if (backupDue(data.lastExport, data.sessions, today)) Note("Time for a backup. Export one from History.")
 
         data.movements.filter { it.day == day }.forEach { m ->
             MovementCard(data, m, comeback, onAccept)
