@@ -36,6 +36,20 @@ class AppViewModel(app: Application) : AndroidViewModel(app) {
         RestTimer.start(getApplication(), data.profile.restSeconds)
     }
 
+    /**
+     * Logs a strength-test max set at the current level, then either moves to the next level to
+     * test or settles the starting level. Tried levels come from the session's own sets.
+     */
+    fun logTest(m: Movement, value: Int) {
+        val p = data.progressOf(m)
+        logSet(SetLog(m.id, p.level, value, p.books, test = true))
+        val tried = data.inProgress?.sets.orEmpty().filter { it.test && it.movementId == m.id }.mapTo(HashSet()) { it.level }
+        setProgress(m, when (val step = testStep(m, p.level, value, tried)) {
+            is TestStep.TestAgain -> p.copy(level = step.level)
+            is TestStep.Start -> p.copy(level = step.level, tested = true)
+        })
+    }
+
     /** Edit (or with null, delete) a logged set by its index in the session. */
     fun editSet(index: Int, value: Int?) = update { d ->
         d.copy(inProgress = d.inProgress?.let { s ->

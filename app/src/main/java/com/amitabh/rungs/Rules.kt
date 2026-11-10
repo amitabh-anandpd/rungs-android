@@ -72,9 +72,9 @@ fun suggestion(m: Movement, p: Progress, sessions: List<Session>): Suggestion? {
 fun oneSessionAway(m: Movement, p: Progress, sessions: List<Session>): Boolean =
     suggestion(m, p, sessions) == null && allAtTop(lastSets(m.id, sessions), m, p)
 
-/** Sets that count for progression: same level, books and tempo as now. */
+/** Sets that count for progression: same level, books and tempo as now, and not a test set. */
 fun countingSets(sets: List<SetLog>, p: Progress) =
-    sets.filter { it.level == p.level && it.books == p.books && it.slowTempo == p.slowTempo }
+    sets.filter { !it.test && it.level == p.level && it.books == p.books && it.slowTempo == p.slowTempo }
 
 private fun allAtTop(sets: List<SetLog>, m: Movement, p: Progress): Boolean {
     val main = countingSets(sets, p)

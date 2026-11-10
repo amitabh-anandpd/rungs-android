@@ -40,7 +40,10 @@ data class Progress(
     val tested: Boolean = false,
 )
 
-/** [value] is reps or seconds. [assist] = reps finished at the previous level (brief rule 4). */
+/**
+ * [value] is reps or seconds. [assist] = reps finished at the previous level (brief rule 4).
+ * [test] = a strength-test max set; it never counts toward progression.
+ */
 @Serializable
 data class SetLog(
     val movementId: String,
@@ -49,6 +52,7 @@ data class SetLog(
     val books: Int = 0,
     val slowTempo: Boolean = false,
     val assist: Int = 0,
+    val test: Boolean = false,
 )
 
 @Serializable

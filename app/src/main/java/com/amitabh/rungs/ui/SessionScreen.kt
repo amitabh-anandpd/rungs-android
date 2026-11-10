@@ -62,14 +62,13 @@ private val WarmUp = listOf(
 fun SessionScreen(vm: AppViewModel, modifier: Modifier = Modifier) {
     val data = vm.data
     val session = data.inProgress ?: return
-    val ctx = LocalContext.current
     val movements = data.movements.filter { it.day == session.day }
     val muted = MaterialTheme.colorScheme.onSurfaceVariant
 
     // Derived from the saved sets, so a killed app resumes on the right exercise.
     var warmup by rememberSaveable { mutableStateOf(session.sets.isEmpty()) }
     var index by rememberSaveable {
-        mutableIntStateOf(movements.indexOfFirst { m -> session.sets.count { it.movementId == m.id } < 3 }.coerceAtLeast(0))
+        mutableIntStateOf(movements.indexOfFirst { m -> session.sets.count { it.movementId == m.id && !it.test } < 3 }.coerceAtLeast(0))
     }
     var confirmExit by remember { mutableStateOf(false) }
     var changeLevel by remember { mutableStateOf(false) }
@@ -87,7 +86,9 @@ fun SessionScreen(vm: AppViewModel, modifier: Modifier = Modifier) {
     val range = target(level, session.comeback)
     val unit = if (level.measure == Measure.SECONDS) "s" else "reps"
     // Indexes into session.sets, so a tap can edit the right one.
-    val logged = session.sets.withIndex().filter { it.value.movementId == m.id }
+    val logged = session.sets.withIndex().filter { it.value.movementId == m.id && !it.value.test }
+    val tests = session.sets.filter { it.movementId == m.id && it.test }
+    val testing = !p.tested
     val last = countingSets(lastSets(m.id, data.sessions), p)
     val setNo = logged.size
 
@@ -122,6 +123,12 @@ fun SessionScreen(vm: AppViewModel, modifier: Modifier = Modifier) {
             Text(level.name, style = MaterialTheme.typography.headlineSmall)
             Text(level.cue + " Lower for 2–3 seconds, stop 1–3 reps short of failure.", color = muted)
 
+            tests.forEach { t ->
+                val l = m.levels[t.level]
+                Text("Test · ${l.name}: ${t.value} " + if (l.measure == Measure.SECONDS) "s" else "reps", color = muted)
+            }
+            if (tests.isNotEmpty() && !testing) Text("Strength test done, starting on this level.", color = MaterialTheme.colorScheme.primary)
+
             logged.forEachIndexed { i, (sessionIndex, set) ->
                 val delta = last.getOrNull(i)?.let { set.value - it.value }
                 Row(
@@ -137,6 +144,17 @@ fun SessionScreen(vm: AppViewModel, modifier: Modifier = Modifier) {
                 }
             }
 
+            if (testing) {
+                var max by remember(m.id, p.level) { mutableIntStateOf(level.min) }
+                Text("Strength test", style = MaterialTheme.typography.titleMedium, color = MaterialTheme.colorScheme.primary)
+                Text("One set, as many clean ${unit} as you can. Stop when your form breaks. This picks your starting level.", color = muted)
+                Stepper(max, step(level), unit) { max = it }
+                RestCard(restEnd, now)
+                Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+                    OutlinedButton(onClick = { vm.setProgress(m, p.copy(tested = true)) }, Modifier.weight(1f)) { Text("Skip test") }
+                    Button(onClick = { vm.logTest(m, max) }, Modifier.weight(1f)) { Text("Log test set") }
+                }
+            } else {
             // Stepper for the next set, starting one above last time.
             var value by remember(m.id, p.level, setNo) { mutableIntStateOf(startValue(level, last, setNo, session.comeback)) }
             var assist by remember(m.id, p.level, setNo) { mutableIntStateOf(0) }
@@ -151,19 +169,7 @@ fun SessionScreen(vm: AppViewModel, modifier: Modifier = Modifier) {
                 Stepper(assist, 1, "easier reps") { assist = it }
             }
 
-            restEnd?.let { end ->
-                val left = ((end - now + 999) / 1000).coerceAtLeast(0)
-                Card(colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.primaryContainer)) {
-                    Column(Modifier.fillMaxWidth().padding(12.dp), horizontalAlignment = Alignment.CenterHorizontally) {
-                        Text("Rest · phone vibrates at 0:00", color = MaterialTheme.colorScheme.onPrimaryContainer)
-                        Text(clock(left), fontSize = 64.sp, fontWeight = FontWeight.Medium, color = MaterialTheme.colorScheme.onPrimaryContainer)
-                        Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
-                            OutlinedButton(onClick = { RestTimer.add(ctx, 15) }) { Text("+15 s") }
-                            TextButton(onClick = { RestTimer.cancel(ctx) }) { Text("Skip rest") }
-                        }
-                    }
-                }
-            }
+            RestCard(restEnd, now)
 
             Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
                 OutlinedButton(onClick = { changeLevel = true }, Modifier.weight(1f)) { Text("Change level") }
@@ -171,6 +177,7 @@ fun SessionScreen(vm: AppViewModel, modifier: Modifier = Modifier) {
                     onClick = { vm.logSet(SetLog(m.id, p.level, value, p.books, p.slowTempo, assist)) },
                     Modifier.weight(1f),
                 ) { Text("Log set") }
+            }
             }
 
             Row(verticalAlignment = Alignment.CenterVertically) {
@@ -238,6 +245,23 @@ fun SessionScreen(vm: AppViewModel, modifier: Modifier = Modifier) {
             confirmButton = { TextButton(onClick = { vm.editSet(i, v); editing = null }) { Text("Save") } },
             dismissButton = { TextButton(onClick = { vm.editSet(i, null); editing = null }) { Text("Delete") } },
         )
+    }
+}
+
+@Composable
+private fun RestCard(restEnd: Long?, now: Long) {
+    val end = restEnd ?: return
+    val ctx = LocalContext.current
+    val left = ((end - now + 999) / 1000).coerceAtLeast(0)
+    Card(colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.primaryContainer)) {
+        Column(Modifier.fillMaxWidth().padding(12.dp), horizontalAlignment = Alignment.CenterHorizontally) {
+            Text("Rest · phone vibrates at 0:00", color = MaterialTheme.colorScheme.onPrimaryContainer)
+            Text(clock(left), fontSize = 64.sp, fontWeight = FontWeight.Medium, color = MaterialTheme.colorScheme.onPrimaryContainer)
+            Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+                OutlinedButton(onClick = { RestTimer.add(ctx, 15) }) { Text("+15 s") }
+                TextButton(onClick = { RestTimer.cancel(ctx) }) { Text("Skip rest") }
+            }
+        }
     }
 }
 

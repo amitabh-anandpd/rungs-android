@@ -115,6 +115,13 @@ class RulesTest {
         assertEquals(TestStep.Start(0), testStep(pushup, 0, 2, emptySet()))
     }
 
+    @Test fun testSetsNeverCountForProgression() {
+        val p = Progress(level = 4)
+        val maxSets = s(Day.PUSH, 1, *sets("pushup", 4, 15, 15, 15).map { it.copy(test = true) }.toTypedArray())
+        assertTrue(countingSets(maxSets.sets, p).isEmpty())
+        assertEquals(null, suggestion(pushup, p, listOf(maxSets, maxSets)))
+    }
+
     @Test fun dataSurvivesJsonRoundTrip() {
         val d = AppData(sessions = listOf(s(Day.PUSH, 1, *sets("pushup", 4, 12, 11))), lastExport = "2026-11-01")
         assertEquals(d, RungsJson.decodeFromString<AppData>(RungsJson.encodeToString(d)))
