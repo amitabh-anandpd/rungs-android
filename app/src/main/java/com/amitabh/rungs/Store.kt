@@ -30,6 +30,12 @@ class Store(dir: File) {
         fun export(data: AppData, out: OutputStream) = out.write(RungsJson.encodeToString(data).encodeToByteArray())
 
         /** Throws on a bad file; the caller keeps the current data in that case. */
-        fun import(input: InputStream): AppData = RungsJson.decodeFromString(input.readBytes().decodeToString())
+        fun import(input: InputStream): AppData =
+            RungsJson.decodeFromString<AppData>(input.readBytes().decodeToString()).also { d ->
+                // Every screen indexes levels by these, so a broken backup must not get in.
+                require(Day.entries.all { day -> d.movements.any { it.day == day } }) { "a day has no movements" }
+                require(d.movements.all { it.levels.isNotEmpty() }) { "empty ladder" }
+                require(d.movements.all { m -> d.progressOf(m).level in m.levels.indices }) { "level out of range" }
+            }
     }
 }

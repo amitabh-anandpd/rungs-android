@@ -59,7 +59,8 @@ fun HistoryScreen(
     val muted = MaterialTheme.colorScheme.onSurfaceVariant
     var movementId by rememberSaveable { mutableStateOf(data.movements.first().id) }
     var confirmImport by remember { mutableStateOf(false) }
-    val m = data.movements.first { it.id == movementId }
+    // A restored backup may not have the movement picked before it.
+    val m = data.movements.firstOrNull { it.id == movementId } ?: data.movements.first()
     val rows = history(m.id, data.sessions)
 
     Column(

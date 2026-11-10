@@ -142,6 +142,13 @@ class RulesTest {
         assertTrue(backupDue(today.minusDays(14).toString(), listOf(s(Day.PUSH, 1)), today))
     }
 
+    @Test fun backupWithLevelOutOfRangeIsRejected() {
+        val bad = RungsJson.encodeToString(AppData(progress = mapOf("pushup" to Progress(level = 99))))
+        try {
+            Store.import(bad.byteInputStream()); fail("should reject")
+        } catch (_: IllegalArgumentException) {}
+    }
+
     @Test fun dataSurvivesJsonRoundTrip() {
         val d = AppData(sessions = listOf(s(Day.PUSH, 1, *sets("pushup", 4, 12, 11))), lastExport = "2026-11-01")
         assertEquals(d, RungsJson.decodeFromString<AppData>(RungsJson.encodeToString(d)))
