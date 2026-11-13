@@ -9,8 +9,7 @@ import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material3.Button
-import androidx.compose.material3.Card
-import androidx.compose.material3.CardDefaults
+import com.amitabh.rungs.ui.theme.GlassCard
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.OutlinedButton
 import androidx.compose.material3.Text
@@ -56,7 +55,7 @@ fun TodayScreen(
     val split = data.profile.split
     val days = split.slots[slot]
     val picked = data.sessionMovements(days)
-    val others = data.movements.filter { it.day in days && it !in picked }
+    val others = data.movements.filter { it.day in days && it !in picked && data.available(it) }
     val comeback = isComeback(data.sessions, today)
     val muted = MaterialTheme.colorScheme.onSurfaceVariant
 
@@ -97,7 +96,7 @@ fun TodayScreen(
 
         if (others.isNotEmpty()) {
             Text("More exercises", style = MaterialTheme.typography.titleMedium, modifier = Modifier.padding(top = 8.dp))
-            Text("Can't do one of today's? Remove it and add another. Your picks are remembered.", style = MaterialTheme.typography.bodySmall, color = muted)
+            Text("Can't do one of today's? Remove it and add another. Your picks are remembered. Exercises for equipment you haven't ticked in Profile are hidden.", style = MaterialTheme.typography.bodySmall, color = muted)
             others.forEach { m ->
                 val level = m.levels[data.progressOf(m).level]
                 Row(verticalAlignment = Alignment.CenterVertically) {
@@ -114,7 +113,7 @@ fun TodayScreen(
 
 @Composable
 private fun Note(text: String, action: Pair<String, () -> Unit>? = null) {
-    Card(colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.primaryContainer)) {
+    GlassCard(accent = true) {
         Row(Modifier.padding(12.dp).fillMaxWidth(), verticalAlignment = Alignment.CenterVertically) {
             Text(text, Modifier.weight(1f), color = MaterialTheme.colorScheme.onPrimaryContainer)
             action?.let { (label, onClick) -> Button(onClick = onClick) { Text(label) } }
@@ -137,7 +136,7 @@ private fun MovementCard(
     val last = countingSets(lastSets(m.id, data.sessions), p).map { it.value }
     val muted = MaterialTheme.colorScheme.onSurfaceVariant
 
-    Card(colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surface)) {
+    GlassCard {
         Column(Modifier.padding(12.dp).fillMaxWidth(), verticalArrangement = Arrangement.spacedBy(4.dp)) {
             Row(verticalAlignment = Alignment.CenterVertically) {
                 Text(level.name, Modifier.weight(1f), fontWeight = FontWeight.Medium)

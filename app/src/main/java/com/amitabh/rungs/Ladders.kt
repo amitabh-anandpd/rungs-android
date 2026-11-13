@@ -179,6 +179,16 @@ val DefaultLadders = listOf(
     ),
 )
 
+/** Everything the ladders can use. Profile ticks what the user really has. */
+val Equipment = listOf("Bed", "Chair", "Backpack with books", "Table", "Sturdy door", "Smooth floor")
+
+/** What a ladder can't be done without. Ladders not listed need only a floor or a wall. */
+private val Needs = mapOf(
+    "dip" to "Bed", "tablerow" to "Table", "doorrow" to "Sturdy door", "legcurl" to "Smooth floor",
+) + listOf("lateral", "ohp", "bprow", "pullover", "bpcurl", "bentrow", "shrug", "hinge").associateWith { "Backpack with books" }
+
+fun Movement.needs(): String? = Needs[id]
+
 /**
  * The default plan: what Today shows until the user picks their own. No table rows and nothing
  * that needs a bar; everything else is one tap away under "More exercises".

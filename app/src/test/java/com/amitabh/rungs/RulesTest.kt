@@ -50,14 +50,24 @@ class RulesTest {
         assertEquals(full.picked(), mine.copy(profile = Profile(split = Split.FULL)).picked())
     }
 
+    @Test fun exercisesNeedingMissingEquipmentAreLeftOut() {
+        val bare = AppData(profile = Profile(equipment = listOf("Bed")))
+        assertEquals(listOf("reardelt"), bare.sessionMovements(listOf(Day.PULL)).map { it.id })
+        assertFalse(bare.available(DefaultLadders.first { it.id == "tablerow" }))
+        assertTrue(bare.available(DefaultLadders.first { it.id == "pushup" }))
+    }
+
     @Test fun oldSaveGetsNewLaddersAndKeepsItsOwn() {
         val edited = DefaultLadders.first { it.id == "pushup" }.copy(name = "My push-up")
-        val old = AppData(movements = listOf(DefaultLadders.first { it.id == "tablerow" }, edited, DefaultLadders.first { it.id == "squat" }))
+        val old = AppData(version = 1, profile = Profile(equipment = listOf("Bed", "Table")), movements = listOf(DefaultLadders.first { it.id == "tablerow" }, edited, DefaultLadders.first { it.id == "squat" }))
         val json = RungsJson.encodeToString(old)
         val d = Store.import(json.byteInputStream())
         assertEquals(DefaultLadders.map { it.id }, d.movements.map { it.id })
         assertEquals("My push-up", d.movements.first().name)
-        assertEquals(d, d.withNewLadders())
+        assertEquals(d, d.migrated())
+        // Version 1 had no door or floor to tick: they arrive ticked, so the default plan stays whole.
+        assertEquals(2, d.version)
+        assertEquals(listOf("Bed", "Table", "Sturdy door", "Smooth floor"), d.profile.equipment)
         // A session saved before plans existed still decodes, as a one-category day.
         val legacy = RungsJson.decodeFromString<Session>("""{"day":"PULL","date":"2026-11-10","startedAt":0}""")
         assertEquals(listOf(Day.PULL), legacy.days)

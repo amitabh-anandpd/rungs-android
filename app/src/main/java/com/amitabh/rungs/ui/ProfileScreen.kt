@@ -7,18 +7,16 @@ import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material3.MaterialTheme
-import androidx.compose.material3.OutlinedTextField
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
-import androidx.compose.runtime.getValue
-import androidx.compose.runtime.mutableStateOf
-import androidx.compose.runtime.saveable.rememberSaveable
-import androidx.compose.runtime.setValue
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.unit.dp
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Row
+import androidx.compose.material3.Checkbox
 import androidx.compose.material3.RadioButton
+import androidx.compose.ui.platform.LocalContext
+import com.amitabh.rungs.Equipment
 import androidx.compose.ui.Alignment
 import com.amitabh.rungs.AppData
 import com.amitabh.rungs.BodyGoal
@@ -34,35 +32,32 @@ import kotlin.math.roundToInt
 fun ProfileScreen(data: AppData, onChange: (Profile) -> Unit, modifier: Modifier = Modifier) {
     val muted = MaterialTheme.colorScheme.onSurfaceVariant
     val p = data.profile
-    // Local text so typing "Bed, " isn't trimmed away mid-word; saved on every change.
-    var goal by rememberSaveable { mutableStateOf(p.goal) }
-    var equipment by rememberSaveable { mutableStateOf(p.equipment.joinToString(", ")) }
-
     Column(
         modifier.verticalScroll(rememberScrollState()).padding(16.dp),
         verticalArrangement = Arrangement.spacedBy(12.dp),
     ) {
         Text("Profile", style = MaterialTheme.typography.headlineMedium)
 
-        OutlinedTextField(
-            goal, { goal = it; onChange(p.copy(goal = it.trim())) },
-            Modifier.fillMaxWidth(), label = { Text("Goal") }, singleLine = true,
-        )
-        OutlinedTextField(
-            equipment,
-            { equipment = it; onChange(p.copy(equipment = it.split(',').map(String::trim).filter(String::isNotEmpty))) },
-            Modifier.fillMaxWidth(), label = { Text("Equipment, comma separated") },
-        )
-
         Text("Plan", style = MaterialTheme.typography.titleMedium, modifier = Modifier.padding(top = 8.dp))
         Text("How the week is split. Each muscle wants work about twice a week, so pick by how often you train.", color = muted)
         Split.entries.forEach { s -> Choice(s == p.split, s.label, s.hint) { onChange(p.copy(split = s)) } }
+
+        Text("Equipment", style = MaterialTheme.typography.titleMedium, modifier = Modifier.padding(top = 8.dp))
+        Text("Untick what you don't have, or don't trust. Exercises that need it are hidden.", color = muted)
+        Equipment.forEach { e ->
+            val on = e in p.equipment
+            val toggle = { onChange(p.copy(equipment = if (on) p.equipment - e else p.equipment + e)) }
+            Row(Modifier.fillMaxWidth().clickable(onClick = toggle), verticalAlignment = Alignment.CenterVertically) {
+                Checkbox(checked = on, onCheckedChange = { toggle() })
+                Text(e)
+            }
+        }
 
         Text("Rest between sets", style = MaterialTheme.typography.titleMedium, modifier = Modifier.padding(top = 8.dp))
         Text("60–90 s is the minimum. Take 90–120 s if your reps drop a lot from set to set. The timer vibrates at the end.", color = muted)
         Stepper(p.restSeconds, 15, "seconds") { onChange(p.copy(restSeconds = it.coerceIn(30, 180))) }
 
-        Text("Body", style = MaterialTheme.typography.titleMedium, modifier = Modifier.padding(top = 8.dp))
+        Text("Goal and body", style = MaterialTheme.typography.titleMedium, modifier = Modifier.padding(top = 8.dp))
         Text("The training is the same for every body type. What changes is how you eat.", color = muted)
         BodyGoal.entries.forEach { g -> Choice(g == p.bodyGoal, g.label, null) { onChange(p.copy(bodyGoal = g)) } }
         Text(p.bodyGoal.tip, color = muted)
@@ -86,6 +81,12 @@ fun ProfileScreen(data: AppData, onChange: (Profile) -> Unit, modifier: Modifier
                 )
             }
         }
+
+        val ctx = LocalContext.current
+        Text(
+            "Rungs version ${ctx.packageManager.getPackageInfo(ctx.packageName, 0).versionName}",
+            Modifier.padding(top = 16.dp), style = MaterialTheme.typography.bodySmall, color = muted,
+        )
     }
 }
 

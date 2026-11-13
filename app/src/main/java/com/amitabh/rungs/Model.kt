@@ -91,8 +91,7 @@ data class Weight(val date: String, val kg: Double)
 
 @Serializable
 data class Profile(
-    val goal: String = "Muscle size",
-    val equipment: List<String> = listOf("Bed", "Table", "Chair", "Backpack with books"),
+    val equipment: List<String> = Equipment,
     val restSeconds: Int = 75,
     val split: Split = Split.PPL,
     val bodyGoal: BodyGoal = BodyGoal.GAIN,
@@ -100,7 +99,8 @@ data class Profile(
 
 @Serializable
 data class AppData(
-    val version: Int = 1,
+    /** Data format: 2 added plans, picks and the door and floor equipment. */
+    val version: Int = 2,
     val profile: Profile = Profile(),
     val movements: List<Movement> = DefaultLadders,
     val progress: Map<String, Progress> = DefaultLadders.associate { it.id to Progress(it.startLevel) },
@@ -117,14 +117,24 @@ data class AppData(
 
     fun picked(): Set<String> = picks[profile.split] ?: defaultPicks(profile.split)
 
-    /** The exercises a session covering [days] would do, in ladder order. */
-    fun sessionMovements(days: List<Day>): List<Movement> = picked().let { on -> movements.filter { it.day in days && it.id in on } }
+    /** False when the exercise needs equipment that isn't ticked in Profile. */
+    fun available(m: Movement) = m.needs()?.let { it in profile.equipment } ?: true
 
-    /** Ladders added in an app update join the saved ones. Saved ladders and edits to them are kept. */
-    fun withNewLadders(): AppData {
+    /** The exercises a session covering [days] would do, in ladder order. */
+    fun sessionMovements(days: List<Day>): List<Movement> =
+        picked().let { on -> movements.filter { it.day in days && it.id in on && available(it) } }
+
+    /**
+     * Brings a save from an older app version up to date. Ladders added since join the saved ones
+     * (saved ladders and edits to them are kept), and a version 1 save gets the equipment that
+     * didn't exist yet, so nothing in the default plan disappears.
+     */
+    fun migrated(): AppData {
+        val d = if (version >= 2) this
+        else copy(version = 2, profile = profile.copy(equipment = (profile.equipment + listOf("Sturdy door", "Smooth floor")).distinct()))
         val order = DefaultLadders.map { it.id }
-        val added = DefaultLadders.filter { d -> movements.none { it.id == d.id } }
-        return if (added.isEmpty()) this
-        else copy(movements = (movements + added).sortedBy { m -> order.indexOf(m.id).let { if (it < 0) order.size else it } })
+        val added = DefaultLadders.filter { n -> d.movements.none { it.id == n.id } }
+        return if (added.isEmpty()) d
+        else d.copy(movements = (d.movements + added).sortedBy { m -> order.indexOf(m.id).let { if (it < 0) order.size else it } })
     }
 }
