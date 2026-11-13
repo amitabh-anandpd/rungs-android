@@ -19,9 +19,63 @@ class RulesTest {
         v.map { SetLog(id, level, it, books) }.toTypedArray()
 
     @Test fun rotationCyclesAndStartsWithPush() {
-        assertEquals(Day.PUSH, nextDay(emptyList()))
-        assertEquals(Day.PULL, nextDay(listOf(s(Day.PUSH, 5))))
-        assertEquals(Day.PUSH, nextDay(listOf(s(Day.PUSH, 5), s(Day.PULL, 4), s(Day.LEGS, 1))))
+        assertEquals(0, nextSlot(Split.PPL, emptyList()))
+        assertEquals(1, nextSlot(Split.PPL, listOf(s(Day.PUSH, 5))))
+        assertEquals(0, nextSlot(Split.PPL, listOf(s(Day.PUSH, 5), s(Day.PULL, 4), s(Day.LEGS, 1))))
+    }
+
+    @Test fun otherPlansRotateTheirOwnDays() {
+        val upper = Session(Day.PUSH, today.toString(), 0, days = listOf(Day.PUSH, Day.PULL))
+        assertEquals(1, nextSlot(Split.UPPER_LOWER, listOf(upper)))
+        assertEquals(0, nextSlot(Split.UPPER_LOWER, listOf(upper, s(Day.LEGS, 0))))
+        assertEquals(0, nextSlot(Split.FULL, listOf(Session(Day.PUSH, today.toString(), 0, days = Day.entries))))
+        // Plan just changed: the last session isn't one of the new plan's days, so start from the top.
+        assertEquals(0, nextSlot(Split.UPPER_LOWER, listOf(s(Day.PULL, 1))))
+        assertEquals("Upper", slotLabel(Split.UPPER_LOWER.slots[0]))
+        assertEquals("Full body", slotLabel(Split.FULL.slots[0]))
+    }
+
+    @Test fun defaultPlanNeedsNoTableAndShrinksOnCombinedDays() {
+        val ppl = AppData()
+        assertFalse("tablerow" in ppl.picked())
+        assertEquals(listOf("bprow", "pullover", "bpcurl", "reardelt"), ppl.sessionMovements(listOf(Day.PULL)).map { it.id })
+        val full = AppData(profile = Profile(split = Split.FULL))
+        assertEquals(listOf("pushup", "pike", "bprow", "pullover", "squat", "hip"), full.sessionMovements(Day.entries).map { it.id })
+        val ul = AppData(profile = Profile(split = Split.UPPER_LOWER))
+        assertEquals(6, ul.sessionMovements(listOf(Day.PUSH, Day.PULL)).size)
+        assertEquals(5, ul.sessionMovements(listOf(Day.LEGS)).size)
+        // The user's own picks win, per plan.
+        val mine = ppl.copy(picks = mapOf(Split.PPL to setOf("bprow", "doorrow")))
+        assertEquals(listOf("bprow", "doorrow"), mine.sessionMovements(listOf(Day.PULL)).map { it.id })
+        assertEquals(full.picked(), mine.copy(profile = Profile(split = Split.FULL)).picked())
+    }
+
+    @Test fun oldSaveGetsNewLaddersAndKeepsItsOwn() {
+        val edited = DefaultLadders.first { it.id == "pushup" }.copy(name = "My push-up")
+        val old = AppData(movements = listOf(DefaultLadders.first { it.id == "tablerow" }, edited, DefaultLadders.first { it.id == "squat" }))
+        val json = RungsJson.encodeToString(old)
+        val d = Store.import(json.byteInputStream())
+        assertEquals(DefaultLadders.map { it.id }, d.movements.map { it.id })
+        assertEquals("My push-up", d.movements.first().name)
+        assertEquals(d, d.withNewLadders())
+        // A session saved before plans existed still decodes, as a one-category day.
+        val legacy = RungsJson.decodeFromString<Session>("""{"day":"PULL","date":"2026-11-10","startedAt":0}""")
+        assertEquals(listOf(Day.PULL), legacy.days)
+        assertTrue(legacy.movementIds.isEmpty())
+    }
+
+    @Test fun weightTrendAndCalorieNudge() {
+        fun w(daysAgo: Long, kg: Double) = Weight(today.minusDays(daysAgo).toString(), kg)
+        assertNull(weeklyChange(listOf(w(0, 62.0)), today))
+        assertNull(weeklyChange(listOf(w(7, 62.0), w(0, 62.5)), today))            // under two weeks
+        assertEquals(0.1, weeklyChange(listOf(w(90, 50.0), w(21, 62.0), w(0, 62.3)), today)!!, 1e-9) // old weigh-in ignored
+        // 62 kg gaining: 0.155..0.31 kg a week.
+        assertEquals(0.155, targetChange(BodyGoal.GAIN, 62.0).start, 1e-9)
+        assertEquals(50, calorieNudge(BodyGoal.GAIN, 62.0, 0.1))    // 0.055 kg/week short = ~60 kcal/day
+        assertEquals(150, calorieNudge(BodyGoal.GAIN, 62.0, 0.0))
+        assertEquals(0, calorieNudge(BodyGoal.GAIN, 62.0, 0.2))
+        assertEquals(-200, calorieNudge(BodyGoal.GAIN, 62.0, 0.5))
+        assertEquals(-450, calorieNudge(BodyGoal.LOSE, 90.0, -0.05))
     }
 
     @Test fun restSuggestedOnlyAfterSixDaysInARow() {
@@ -155,7 +209,8 @@ class RulesTest {
     }
 
     @Test fun defaultLaddersAreValid() {
-        assertEquals(10, DefaultLadders.size)
+        assertEquals(DefaultLadders.size, DefaultLadders.map { it.id }.toSet().size)
+        Day.entries.forEach { d -> assertTrue(DefaultLadders.any { it.day == d }) }
         DefaultLadders.forEach { m ->
             assertTrue(m.id, m.startLevel in m.levels.indices)
             m.levels.forEach { assertTrue(it.name, it.min < it.max) }

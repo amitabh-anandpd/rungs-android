@@ -8,9 +8,41 @@ import kotlin.math.roundToInt
 
 // Training rules from the product brief. Pure functions so they can be unit-tested.
 
-/** Rotation queue: the day after the last completed session; missed days change nothing. */
-fun nextDay(sessions: List<Session>): Day =
-    sessions.lastOrNull()?.let { Day.entries[(it.day.ordinal + 1) % Day.entries.size] } ?: Day.PUSH
+/**
+ * Rotation queue: the slot after the last completed session's; missed days change nothing.
+ * A last session that isn't a slot of this plan (the plan was just changed) restarts at the first.
+ */
+fun nextSlot(split: Split, sessions: List<Session>): Int =
+    sessions.lastOrNull()?.let { (split.slots.indexOf(it.days) + 1) % split.slots.size } ?: 0
+
+fun slotLabel(days: List<Day>) = when (days.size) { 1 -> days[0].label; 2 -> "Upper"; else -> "Full body" }
+
+/** Warm-up plus 3 sets per exercise at ~45 s of work and one rest each. */
+fun estimatedMinutes(exercises: Int, restSeconds: Int) = 5 + exercises * 3 * (restSeconds + 45) / 60
+
+/**
+ * Body-weight trend in kg per week across the last 5 weeks of weigh-ins; null until they span 2 weeks.
+ * ponytail: first-to-last difference, so one odd weigh-in skews it. Least-squares slope if that bites.
+ */
+fun weeklyChange(weights: List<Weight>, today: LocalDate): Double? {
+    val recent = weights.filter { ChronoUnit.DAYS.between(LocalDate.parse(it.date), today) <= 35 }
+    if (recent.size < 2) return null
+    val days = ChronoUnit.DAYS.between(LocalDate.parse(recent.first().date), LocalDate.parse(recent.last().date))
+    return if (days < 14) null else (recent.last().kg - recent.first().kg) * 7 / days
+}
+
+/** The goal's weekly change for this body weight, in kg. */
+fun targetChange(goal: BodyGoal, kg: Double): ClosedFloatingPointRange<Double> =
+    goal.pctPerWeek.start * kg / 100..goal.pctPerWeek.endInclusive * kg / 100
+
+/**
+ * Calories per day to add (or, negative, cut) to bring the trend back inside the goal's range,
+ * at ~7700 kcal per kg, rounded to 50. 0 means on track.
+ */
+fun calorieNudge(goal: BodyGoal, kg: Double, kgPerWeek: Double): Int {
+    val want = targetChange(goal, kg)
+    return ((kgPerWeek.coerceIn(want) - kgPerWeek) * 7700 / 7 / 50).roundToInt() * 50
+}
 
 /** Trained on each of the last 6 days and not yet today: suggest resting on the 7th. */
 fun suggestRest(sessions: List<Session>, today: LocalDate): Boolean {

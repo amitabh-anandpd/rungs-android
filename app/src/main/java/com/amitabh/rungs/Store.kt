@@ -13,7 +13,7 @@ class Store(dir: File) {
     private val file = AtomicFile(File(dir, "rungs.json"))
 
     fun load(): AppData =
-        if (file.baseFile.exists()) RungsJson.decodeFromString(file.readFully().decodeToString()) else AppData()
+        if (file.baseFile.exists()) RungsJson.decodeFromString<AppData>(file.readFully().decodeToString()).withNewLadders() else AppData()
 
     fun save(data: AppData) {
         val out = file.startWrite()
@@ -36,6 +36,6 @@ class Store(dir: File) {
                 require(Day.entries.all { day -> d.movements.any { it.day == day } }) { "a day has no movements" }
                 require(d.movements.all { it.levels.isNotEmpty() }) { "empty ladder" }
                 require(d.movements.all { m -> d.progressOf(m).level in m.levels.indices }) { "level out of range" }
-            }
+            }.withNewLadders()
     }
 }
