@@ -3,6 +3,7 @@ package com.amitabh.rungs.ui
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
+import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.rememberScrollState
@@ -13,16 +14,14 @@ import androidx.compose.material3.CardDefaults
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.OutlinedButton
 import androidx.compose.material3.Text
+import androidx.compose.material3.TextButton
+import androidx.compose.material3.FilterChip
 import androidx.compose.runtime.Composable
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
-import androidx.compose.ui.text.SpanStyle
-import androidx.compose.ui.text.buildAnnotatedString
 import androidx.compose.ui.text.font.FontWeight
-import androidx.compose.ui.text.withStyle
 import androidx.compose.ui.unit.dp
 import com.amitabh.rungs.AppData
-import com.amitabh.rungs.Day
 import com.amitabh.rungs.Measure
 import com.amitabh.rungs.Movement
 import com.amitabh.rungs.Suggestion
@@ -30,7 +29,8 @@ import com.amitabh.rungs.backupDue
 import com.amitabh.rungs.countingSets
 import com.amitabh.rungs.isComeback
 import com.amitabh.rungs.lastSets
-import com.amitabh.rungs.nextDay
+import com.amitabh.rungs.estimatedMinutes
+import com.amitabh.rungs.slotLabel
 import com.amitabh.rungs.oneSessionAway
 import com.amitabh.rungs.sessionsThisWeek
 import com.amitabh.rungs.suggestRest
@@ -43,13 +43,20 @@ import java.util.Locale
 @Composable
 fun TodayScreen(
     data: AppData,
+    /** Index into the plan's slots: the queue's next one, or the one the user tapped. */
+    slot: Int,
+    onSlot: (Int) -> Unit,
+    onTogglePick: (String) -> Unit,
     onAccept: (Movement, Suggestion, slowTempo: Boolean) -> Unit,
     onStart: (() -> Unit)?,
     onExport: () -> Unit,
     modifier: Modifier = Modifier,
 ) {
     val today = LocalDate.now()
-    val day = nextDay(data.sessions)
+    val split = data.profile.split
+    val days = split.slots[slot]
+    val picked = data.sessionMovements(days)
+    val others = data.movements.filter { it.day in days && it !in picked }
     val comeback = isComeback(data.sessions, today)
     val muted = MaterialTheme.colorScheme.onSurfaceVariant
 
@@ -61,20 +68,13 @@ fun TodayScreen(
             "${today.dayOfWeek.getDisplayName(TextStyle.FULL, Locale.getDefault())} · session ${data.sessions.size + 1}",
             style = MaterialTheme.typography.labelLarge, color = muted,
         )
-        Text("Next up: ${day.label}", style = MaterialTheme.typography.headlineMedium)
-        Row(verticalAlignment = Alignment.CenterVertically) {
-            val accent = MaterialTheme.colorScheme.primary
-            Text(
-                buildAnnotatedString {
-                    Day.entries.forEachIndexed { i, d ->
-                        if (i > 0) append("  →  ")
-                        if (d == day) withStyle(SpanStyle(color = accent, fontWeight = FontWeight.Bold)) { append(d.label) }
-                        else append(d.label)
-                    }
-                },
-                Modifier.weight(1f),
-                color = muted,
-            )
+        Text("Next up: ${slotLabel(days)}", style = MaterialTheme.typography.headlineMedium)
+        // The queue picks the day; tap another to do that one instead.
+        Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+            split.slots.forEachIndexed { i, s ->
+                FilterChip(selected = i == slot, onClick = { onSlot(i) }, label = { Text(slotLabel(s)) })
+            }
+            Spacer(Modifier.weight(1f))
             Text("${sessionsThisWeek(data.sessions, today)} this week", color = muted)
         }
 
@@ -82,16 +82,32 @@ fun TodayScreen(
         if (comeback) Note("Welcome back. Targets are about 20% lower for this session.")
         if (backupDue(data.lastExport, data.sessions, today)) Note("Time for a backup.", "Export backup" to onExport)
 
-        data.movements.filter { it.day == day }.forEach { m ->
-            MovementCard(data, m, comeback, onAccept)
+        picked.forEach { m ->
+            MovementCard(data, m, comeback, onAccept, onRemove = { onTogglePick(m.id) })
         }
 
         Text(
-            "About 40 min including warm-up. Missed a day? The queue just waits; there's nothing to catch up.",
+            if (picked.isEmpty()) "Add at least one exercise below."
+            else "About ${estimatedMinutes(picked.size, data.profile.restSeconds)} min including warm-up. Missed a day? The queue just waits; there's nothing to catch up.",
             style = MaterialTheme.typography.bodySmall, color = muted,
         )
-        Button(onClick = { onStart?.invoke() }, enabled = onStart != null, modifier = Modifier.fillMaxWidth()) {
+        Button(onClick = { onStart?.invoke() }, enabled = onStart != null && picked.isNotEmpty(), modifier = Modifier.fillMaxWidth()) {
             Text("Start workout")
+        }
+
+        if (others.isNotEmpty()) {
+            Text("More exercises", style = MaterialTheme.typography.titleMedium, modifier = Modifier.padding(top = 8.dp))
+            Text("Can't do one of today's? Remove it and add another. Your picks are remembered.", style = MaterialTheme.typography.bodySmall, color = muted)
+            others.forEach { m ->
+                val level = m.levels[data.progressOf(m).level]
+                Row(verticalAlignment = Alignment.CenterVertically) {
+                    Column(Modifier.weight(1f)) {
+                        Text(level.name, fontWeight = FontWeight.Medium)
+                        Text(level.cue, style = MaterialTheme.typography.bodySmall, color = muted)
+                    }
+                    OutlinedButton(onClick = { onTogglePick(m.id) }) { Text("Add") }
+                }
+            }
         }
     }
 }
@@ -112,6 +128,7 @@ private fun MovementCard(
     m: Movement,
     comeback: Boolean,
     onAccept: (Movement, Suggestion, Boolean) -> Unit,
+    onRemove: () -> Unit,
 ) {
     val p = data.progressOf(m)
     val level = m.levels[p.level]
@@ -159,6 +176,7 @@ private fun MovementCard(
                     )
                 }
             }
+            TextButton(onClick = onRemove) { Text("Remove from plan") }
         }
     }
 }

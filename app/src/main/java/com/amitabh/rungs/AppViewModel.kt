@@ -28,9 +28,24 @@ class AppViewModel(app: Application) : AndroidViewModel(app) {
         viewModelScope.launch(io) { store.save(next) }
     }
 
+    /** A day the user tapped on Today instead of the queue's. Forgotten once a session is done. */
+    private var slotOverride by mutableStateOf<Int?>(null)
+    val slot: Int get() = slotOverride?.takeIf { it in data.profile.split.slots.indices } ?: nextSlot(data.profile.split, data.sessions)
+
+    fun chooseSlot(i: Int) { slotOverride = i }
+
     fun startSession() = update { d ->
         val today = LocalDate.now()
-        d.copy(inProgress = Session(nextDay(d.sessions), today.toString(), System.currentTimeMillis(), comeback = isComeback(d.sessions, today)))
+        val days = d.profile.split.slots[slot]
+        val ids = d.sessionMovements(days).map { it.id }
+        if (ids.isEmpty()) d
+        else d.copy(inProgress = Session(days.first(), today.toString(), System.currentTimeMillis(), comeback = isComeback(d.sessions, today), days = days, movementIds = ids))
+    }
+
+    /** Adds an exercise to, or removes it from, the current plan's picks. */
+    fun togglePick(id: String) = update { d ->
+        val on = d.picked()
+        d.copy(picks = d.picks + (d.profile.split to if (id in on) on - id else on + id))
     }
 
     /** Logs a set and starts the rest countdown. */
@@ -66,6 +81,7 @@ class AppViewModel(app: Application) : AndroidViewModel(app) {
     /** Saves the session if anything was logged; an empty one is just dropped. */
     fun finishSession(keep: Boolean) {
         RestTimer.cancel(getApplication())
+        slotOverride = null
         update { d ->
             val s = d.inProgress
             d.copy(inProgress = null, sessions = if (keep && s != null && s.sets.isNotEmpty()) d.sessions + s else d.sessions)

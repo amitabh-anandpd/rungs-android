@@ -70,7 +70,11 @@ class MainActivity : ComponentActivity() {
                 ) { pad ->
                     val mod = Modifier.fillMaxSize().padding(pad)
                     when (tab) {
-                        Tab.TODAY -> TodayScreen(vm.data, onAccept = vm::accept, onStart = start, onExport = export, modifier = mod)
+                        Tab.TODAY -> TodayScreen(
+                            vm.data, vm.slot,
+                            onSlot = vm::chooseSlot, onTogglePick = vm::togglePick,
+                            onAccept = vm::accept, onStart = start, onExport = export, modifier = mod,
+                        )
                         Tab.HISTORY -> HistoryScreen(
                             vm.data,
                             onAddWeight = vm::addWeight,

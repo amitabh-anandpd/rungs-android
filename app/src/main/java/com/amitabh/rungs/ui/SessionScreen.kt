@@ -43,6 +43,7 @@ import com.amitabh.rungs.RestTimer
 import com.amitabh.rungs.SetLog
 import com.amitabh.rungs.countingSets
 import com.amitabh.rungs.lastSets
+import com.amitabh.rungs.slotLabel
 import com.amitabh.rungs.startValue
 import com.amitabh.rungs.step
 import com.amitabh.rungs.target
@@ -62,7 +63,9 @@ private val WarmUp = listOf(
 fun SessionScreen(vm: AppViewModel, modifier: Modifier = Modifier) {
     val data = vm.data
     val session = data.inProgress ?: return
-    val movements = data.movements.filter { it.day == session.day }
+    val movements =
+        if (session.movementIds.isEmpty()) data.movements.filter { it.day == session.day }
+        else session.movementIds.mapNotNull { id -> data.movements.firstOrNull { it.id == id } }
     val muted = MaterialTheme.colorScheme.onSurfaceVariant
 
     // Derived from the saved sets, so a killed app resumes on the right exercise.
@@ -80,7 +83,7 @@ fun SessionScreen(vm: AppViewModel, modifier: Modifier = Modifier) {
     }
     val restEnd by RestTimer.endsAt.collectAsState()
 
-    val m = movements[index]
+    val m = movements.getOrNull(index) ?: return
     val p = data.progressOf(m)
     val level = m.levels[p.level]
     val range = target(level, session.comeback)
@@ -98,7 +101,7 @@ fun SessionScreen(vm: AppViewModel, modifier: Modifier = Modifier) {
     ) {
         Row(verticalAlignment = Alignment.CenterVertically) {
             Text(
-                "${session.day.label} · " + if (warmup) "warm-up" else "exercise ${index + 1} of ${movements.size}",
+                "${slotLabel(session.days)} · " + if (warmup) "warm-up" else "exercise ${index + 1} of ${movements.size}",
                 Modifier.weight(1f), color = muted,
             )
             Text(clock((now - session.startedAt) / 1000), color = muted)
