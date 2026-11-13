@@ -8,12 +8,25 @@ import androidx.activity.ComponentActivity
 import androidx.activity.compose.rememberLauncherForActivityResult
 import androidx.activity.compose.setContent
 import androidx.activity.result.contract.ActivityResultContracts
+import androidx.activity.SystemBarStyle
 import androidx.activity.enableEdgeToEdge
+import androidx.compose.foundation.background
+import androidx.compose.foundation.layout.Row
+import androidx.compose.foundation.layout.fillMaxWidth
+import androidx.compose.foundation.layout.navigationBarsPadding
+import androidx.compose.foundation.selection.selectable
+import androidx.compose.foundation.shape.CircleShape
+import androidx.compose.ui.draw.clip
+import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.semantics.Role
+import androidx.compose.ui.text.font.FontWeight
+import androidx.compose.ui.text.style.TextAlign
+import androidx.compose.ui.unit.dp
+import com.amitabh.rungs.ui.theme.GlassBackground
+import com.amitabh.rungs.ui.theme.glass
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.padding
 import androidx.compose.material3.MaterialTheme
-import androidx.compose.material3.NavigationBar
-import androidx.compose.material3.NavigationBarItem
 import androidx.compose.material3.Scaffold
 import androidx.compose.material3.Text
 import androidx.compose.runtime.getValue
@@ -34,9 +47,10 @@ enum class Tab(val label: String) { TODAY("Today"), LADDERS("Ladders"), HISTORY(
 class MainActivity : ComponentActivity() {
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
-        enableEdgeToEdge()
+        // The app is always dark, so the status and navigation bar icons are always light.
+        SystemBarStyle.dark(android.graphics.Color.TRANSPARENT).let { enableEdgeToEdge(it, it) }
         setContent {
-            RungsTheme {
+            RungsTheme { GlassBackground {
                 val vm: AppViewModel = viewModel()
                 var tab by rememberSaveable { mutableStateOf(Tab.TODAY) }
                 // Asked once, on the first workout: lets the rest countdown show on the lock screen.
@@ -54,16 +68,27 @@ class MainActivity : ComponentActivity() {
                 }
 
                 if (vm.data.inProgress != null) {
-                    Scaffold(containerColor = MaterialTheme.colorScheme.background) { pad ->
+                    Scaffold(containerColor = Color.Transparent, contentColor = MaterialTheme.colorScheme.onBackground) { pad ->
                         SessionScreen(vm, Modifier.fillMaxSize().padding(pad))
                     }
                 } else Scaffold(
-                    containerColor = MaterialTheme.colorScheme.background,
+                    containerColor = Color.Transparent,
+                    contentColor = MaterialTheme.colorScheme.onBackground,
                     bottomBar = {
-                        // Text-only tabs, as in the wireframes.
-                        NavigationBar {
+                        // Text-only tabs in a floating glass pill.
+                        Row(Modifier.navigationBarsPadding().padding(horizontal = 16.dp, vertical = 8.dp).fillMaxWidth().glass(CircleShape).padding(4.dp)) {
                             Tab.entries.forEach { t ->
-                                NavigationBarItem(selected = t == tab, onClick = { tab = t }, icon = { Text(t.label) })
+                                val on = t == tab
+                                Text(
+                                    t.label,
+                                    Modifier.weight(1f).clip(CircleShape)
+                                        .background(if (on) MaterialTheme.colorScheme.primary.copy(alpha = 0.28f) else Color.Transparent)
+                                        .selectable(selected = on, role = Role.Tab) { tab = t }
+                                        .padding(vertical = 12.dp),
+                                    textAlign = TextAlign.Center,
+                                    fontWeight = if (on) FontWeight.SemiBold else FontWeight.Normal,
+                                    color = if (on) MaterialTheme.colorScheme.onBackground else MaterialTheme.colorScheme.onSurfaceVariant,
+                                )
                             }
                         }
                     },
@@ -86,7 +111,7 @@ class MainActivity : ComponentActivity() {
                         Tab.PROFILE -> ProfileScreen(vm.data, onChange = vm::setProfile, modifier = mod)
                     }
                 }
-            }
+            } }
         }
     }
 }

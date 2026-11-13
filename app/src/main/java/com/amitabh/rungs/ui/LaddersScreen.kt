@@ -9,7 +9,7 @@ import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material3.AlertDialog
-import androidx.compose.material3.Card
+import com.amitabh.rungs.ui.theme.GlassCard
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.OutlinedTextField
 import androidx.compose.material3.Text
@@ -53,7 +53,7 @@ fun LaddersScreen(
             Text(day.label, style = MaterialTheme.typography.titleMedium, modifier = Modifier.padding(top = 8.dp))
             data.movements.filter { it.day == day }.forEach { m ->
                 val p = data.progressOf(m)
-                Card(Modifier.fillMaxWidth()) {
+                GlassCard(Modifier.fillMaxWidth()) {
                     Column(Modifier.padding(12.dp), verticalArrangement = Arrangement.spacedBy(6.dp)) {
                         Row(verticalAlignment = Alignment.CenterVertically) {
                             Text(m.name, Modifier.weight(1f), style = MaterialTheme.typography.titleSmall)

@@ -13,8 +13,7 @@ import androidx.compose.foundation.text.KeyboardOptions
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material3.AlertDialog
 import androidx.compose.material3.Button
-import androidx.compose.material3.Card
-import androidx.compose.material3.CardDefaults
+import com.amitabh.rungs.ui.theme.GlassCard
 import androidx.compose.material3.FilterChip
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.OutlinedButton
@@ -131,11 +130,7 @@ fun HistoryScreen(
         // Backup.
         Text("Backup", style = MaterialTheme.typography.titleMedium, modifier = Modifier.padding(top = 12.dp))
         val due = backupDue(data.lastExport, data.sessions, LocalDate.now())
-        Card(
-            colors = CardDefaults.cardColors(
-                containerColor = if (due) MaterialTheme.colorScheme.primaryContainer else MaterialTheme.colorScheme.surfaceVariant,
-            ),
-        ) {
+        GlassCard(accent = due) {
             Column(Modifier.fillMaxWidth().padding(12.dp), verticalArrangement = Arrangement.spacedBy(8.dp)) {
                 Text(
                     (data.lastExport?.let { "Last backup ${LocalDate.parse(it).format(Short)}." } ?: "No backup yet.") +

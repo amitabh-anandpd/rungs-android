@@ -14,8 +14,7 @@ import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material3.AlertDialog
 import androidx.compose.material3.Button
-import androidx.compose.material3.Card
-import androidx.compose.material3.CardDefaults
+import com.amitabh.rungs.ui.theme.GlassCard
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.OutlinedButton
 import androidx.compose.material3.RadioButton
@@ -256,7 +255,7 @@ private fun RestCard(restEnd: Long?, now: Long) {
     val end = restEnd ?: return
     val ctx = LocalContext.current
     val left = ((end - now + 999) / 1000).coerceAtLeast(0)
-    Card(colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.primaryContainer)) {
+    GlassCard(accent = true) {
         Column(Modifier.fillMaxWidth().padding(12.dp), horizontalAlignment = Alignment.CenterHorizontally) {
             Text("Rest · phone vibrates at 0:00", color = MaterialTheme.colorScheme.onPrimaryContainer)
             Text(clock(left), fontSize = 64.sp, fontWeight = FontWeight.Medium, color = MaterialTheme.colorScheme.onPrimaryContainer)
